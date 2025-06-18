@@ -1,0 +1,47 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      branch_lineage:
+        description: 'Branch lineage to checkout'
+        required: false
+        default: 'master'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.branch_lineage || github.ref }}
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install .
+        # Keep make build as it might do other preparations needed for 'make test'
+        # based on the original ci.yml. If 'pip install .' fully covers
+        # everything 'make build' did for the testing context, it could be removed.
+        make build
+
+    - name: Test
+      run: |
+        # Assuming tests are run with 'make test' as in the existing ci.yml
+        make test
